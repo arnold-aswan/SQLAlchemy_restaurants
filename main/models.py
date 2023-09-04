@@ -25,7 +25,7 @@ class Restaurant(Base):
     name = Column(String())
     price = Column(Integer())
     
-    review = relationship('Review', back_populates='reviews')
+    review = relationship('Review', backref='restaurants')
     customers = relationship('Customer', secondary='restaurant_customers', back_populates='restaurants')
     
     def __init__(self, name, price):
@@ -40,7 +40,8 @@ class Restaurant(Base):
     def reviews(self):
         # returns a collection of all the reviews of the restaurant instance
         reviews = session.query(Review).filter(Review.restaurant_id == self.id).all()
-        return [review.rating for review in reviews]
+        # return [review.rating for review in reviews]
+        return reviews
     
     def restaurant_customers(self):
         # returns a collection of all the customers who reviewed the `Restaurant`
@@ -52,15 +53,8 @@ class Restaurant(Base):
         reviews = session.query(Review).join(Restaurant).join(Customer).\
             filter(Review.restaurant_id == self.id).all()   
         
-        for review in reviews:
-            print(f'Restauant name: {self.name} : {review}')
-        
-        review_text = []
-        for review in reviews:
-            reviewed =  f"Review for {self.name}  {review.rating} stars.",
-            review_text.append(reviewed)
-        print(review_text)
-        return review_text    
+        reviewed= [review.full_review() for review in reviews]
+        return reviewed
     
     @classmethod
     def fanciest(cls):
@@ -74,6 +68,7 @@ class Customer(Base):
     first_name = Column(String())
     last_name = Column(String())    
     
+    review = relationship('Review', backref='customers')
     restaurants = relationship('Restaurant', secondary='restaurant_customers', back_populates='customers')
     
     def __init__(self, first_name, last_name):
@@ -160,7 +155,7 @@ class Review(Base):
         return f"Restaurant for the specified id doesn't exist"
     
     def full_review(self):
-        pass
+        return f"Review for {self.restaurants.name} by {self.customers.full_name()}: {self.rating} stars."
         
              
 engine = create_engine('sqlite:///restaurants.db')            
@@ -210,6 +205,9 @@ session = Session()
 
 # REVIEW
 # REVIEW FULL REVIEW
+# review = session.query(Review).filter_by(id=5).first()
+# result = review.full_review()
+# print(result)
 
 # RESTAURANT
 # FANCIEST RESTAURANT
@@ -240,9 +238,9 @@ session = Session()
 # print(result)
 
 # RESTAURANT CUSTOMERS
-# restaurant = session.query(Restaurant).filter_by(id=3).first()
-# result = restaurant.restaurant_customers()
-# print(result)
+restaurant = session.query(Restaurant).filter_by(id=3).first()
+result = restaurant.restaurant_customers()
+print(result)
 
 # REVIEW RESTAURANT
 # review = session.query(Review).filter_by(id=2).first()
