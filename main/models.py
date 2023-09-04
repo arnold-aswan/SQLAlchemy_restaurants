@@ -25,6 +25,7 @@ class Restaurant(Base):
     name = Column(String())
     price = Column(Integer())
     
+    review = relationship('Review', back_populates='reviews')
     customers = relationship('Customer', secondary='restaurant_customers', back_populates='restaurants')
     
     def __init__(self, name, price):
@@ -37,17 +38,19 @@ class Restaurant(Base):
             f'price= {self.price})'   
     
     def reviews(self):
+        # returns a collection of all the reviews of the restaurant instance
         reviews = session.query(Review).filter(Review.restaurant_id == self.id).all()
         return [review.rating for review in reviews]
     
     def restaurant_customers(self):
+        # returns a collection of all the customers who reviewed the `Restaurant`
         customers = session.query(Customer).join(Review).filter(Review.restaurant_id == self.id).all()
         return [customer.first_name for customer in customers]
     
     def all_reviews(self):
+        # return an list of strings with all the reviews for this restaurant
         reviews = session.query(Review).join(Restaurant).join(Customer).\
-            filter(Review.restaurant_id == self.id).all()
-        # print(reviews)    
+            filter(Review.restaurant_id == self.id).all()   
         
         for review in reviews:
             print(f'Restauant name: {self.name} : {review}')
@@ -61,6 +64,7 @@ class Restaurant(Base):
     
     @classmethod
     def fanciest(cls):
+        # returns _one_ restaurant instance for the restaurant that has the highest   price
         restaurant = session.query(Restaurant).order_by(Restaurant.price.desc()).first()
         print(restaurant)
           
@@ -82,17 +86,21 @@ class Customer(Base):
             f'lastName = {self.last_name})'    
             
     def reviews(self):
+        #  should return a collection of all the reviews that the `Customer` has left
         reviews = session.query(Review).filter(self.id == Review.customer_id).all()
         return [review.rating for review in reviews]
             
     def customer_restaurants(self):
+        # returns the restaurant instance that has the highest star rating from this customer
         restaurants = session.query(Restaurant).join(Review).filter(Review.customer_id == self.id).all()
         return [restaurant.name for restaurant in restaurants]
     
     def full_name(self):
+        # returns the full name of the customer, with the first name and the last name  concatenated, Western style.
         return f"{self.first_name} {self.last_name}"
     
     def favorite_restaurant(self):
+        #  returns the restaurant instance that has the highest star rating from this customer
         favorite = session.query(Restaurant).\
             join(restaurant_customers).\
             join(Review, Restaurant.id == Review.restaurant_id).\
@@ -102,12 +110,14 @@ class Customer(Base):
         return favorite                
         
     def add_review(self, rating, restaurant_id):   
+        # creates a new review for the restaurant with the given `restaurant_id`
         review = Review(rating = rating, restaurant_id = restaurant_id, customer_id = self.id)  
         session.add(review)
         session.commit()
         print('review added')
         
     def delete_reviews (self, restaurant):
+        # removes **all** their reviews for this restaurant
         reviews = session.query(Review).\
             filter(and_(Review.customer_id == self.id, Review.restaurant_id == restaurant.id)).all()
         print(reviews)    
@@ -123,6 +133,7 @@ class Review(Base):
     restaurant_id = Column(Integer(), ForeignKey('restaurants.id'))
     customer_id = Column(Integer(), ForeignKey('customers.id'))
     
+    
     def __init__(self, rating, restaurant_id, customer_id):
         self.rating = rating
         self.restaurant_id = restaurant_id
@@ -134,6 +145,7 @@ class Review(Base):
             f'customer_id = {self.customer_id})'
             
     def customer(self):
+        # Returns the customer instance for this review
         customer = session.query(Customer).join(Review).filter(Review.id == self.id).first()
         if customer:
             return f"Customer is {customer.first_name} {customer.last_name}"    
@@ -141,10 +153,14 @@ class Review(Base):
             return "Customer for the specified id doesn't exist"    
     
     def restaurant(self):
+        # Returns the restaurant instance for this review
         restaurant = session.query(Restaurant).join(Review).filter(Review.id == self.id).first()
         if restaurant:
             return f"Restaurant is {restaurant.name}"
         return f"Restaurant for the specified id doesn't exist"
+    
+    def full_review(self):
+        pass
         
              
 engine = create_engine('sqlite:///restaurants.db')            
